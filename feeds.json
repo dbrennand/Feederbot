@@ -1,0 +1,14 @@
+{
+  "hacker_news": {
+    "url": "https://feeds.feedburner.com/TheHackersNews",
+    "date_title": ""
+  },
+  "krebs_security": {
+    "url": "https://krebsonsecurity.com/feed/",
+    "date_title": ""
+  },
+  "mac_rumors": {
+    "url": "http://feeds.macrumors.com/MacRumors-All",
+    "date_title": ""
+  }
+}
