@@ -1,5 +1,6 @@
 try:
     import feedparser, html2text, asyncio, json, datetime, telepot
+    from loguru import logger
     from telepot.aio.loop import MessageLoop
     from telepot.aio.delegate import per_chat_id, create_open, pave_event_space
 except ImportError:
@@ -30,8 +31,7 @@ class RSS(telepot.aio.helper.ChatHandler):
                         data_file.truncate()
                 data_file.close()
         except IOError:
-            print("date_title(): Failed to open requested file.")
-
+            logger.debug("date_title(): Failed to open requested file.")
 
     async def feed_to_md(self, state, name, feed_data):
         """A Function for converting rss feeds into markdown text.
@@ -51,17 +51,15 @@ class RSS(telepot.aio.helper.ChatHandler):
         h.ignore_links = True
         summary = h.handle(summary)
         if ((state) == ("set")):
-            print(
-                f"Running date_title for feeds.json at {datetime.datetime.now()}")
+            logger.debug(f"Running date_title for feeds.json at {datetime.datetime.now()}")
             # date_title() see utils.py
             await self.date_title("feeds.json", name, title)
         results = []
         result = {"title": title, "summary": summary,
-                "url": link, "post_date": post_date}
+                  "url": link, "post_date": post_date}
         results.append(result)
         # A list containing the dict object result.
         return results
-
 
     async def file_reader(self, path, mode):
         """Loads json data from path specified.
@@ -73,11 +71,13 @@ class RSS(telepot.aio.helper.ChatHandler):
                 target_file.close()
                 return data
         except IOError:
-            print(f"Failed to open {path}")
+            logger.debug(f"Failed to open {path}")
 
     async def on_chat_message(self, msg):
         if msg["text"] == "/start":
+            logger.start("file_{time}.log", rotation="300 MB")
             while True:
+                logger.debug("Checking Feeds!")
                 feeds = await self.file_reader("feeds.json", "r")
 
                 for name, feed_data in feeds.items():
@@ -88,19 +88,16 @@ class RSS(telepot.aio.helper.ChatHandler):
                         pass
                     elif ((feed_data["date_title"]) != (results[0]["title"])):
                         results = await self.feed_to_md("set", name, feed_data)
-                        print(
-                            f"Running feed_to_md at {datetime.datetime.now()}")
-                        rss_msg = f"""
-[{results[0]["title"]}]({results[0]["url"]})\n
-{results[0]["summary"]}
-                        """
-                        await self.bot.sendMessage(chat_id=msg["chat"]["id"], text=rss_msg, parse_mode="Markdown")
+                        logger.debug(f"Running feed_to_md at {datetime.datetime.now()}")
+                        rss_msg = f"""[{results[0]["title"]}]({results[0]["url"]})\n{results[0]["summary"]}"""
+                        await self.bot.sendMessage(msg["chat"]["id"], rss_msg, parse_mode="Markdown")
                 # Sleep for 30 mins before re-checking.
+                logger.debug("Sleeping for 30 mins.")
                 await asyncio.sleep(1800)
 
 
 if __name__ == "__main__":
-    TOKEN = "Insert Token Here."
+    TOKEN = "Insert Key Here."
     bot = telepot.aio.DelegatorBot(TOKEN, [
         pave_event_space()(
             per_chat_id(), create_open, RSS, timeout=10),
