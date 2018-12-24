@@ -3,9 +3,9 @@ A Telegram bot for reading RSS Feeds.
 Checks every 30 mins for news based on users chosen RSS feeds.
 
 ## Dependencies
-Install requirements using requirements.txt:
+Install requirements using Pipfile:
 ```
-pip3 install -r requirements.txt
+pipenv install
 ```
 
 ## Usage
