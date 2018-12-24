@@ -76,20 +76,21 @@ class RSS(telepot.aio.helper.ChatHandler):
     async def on_chat_message(self, msg):
         if msg["text"] == "/start":
             logger.start("file_{time}.log", rotation="300 MB")
+            # Run forever.
             while True:
                 logger.debug("Checking Feeds!")
                 feeds = await self.file_reader("feeds.json", "r")
 
                 for name, feed_data in feeds.items():
                     results = await self.feed_to_md(None, name, feed_data)
-                    # Checking if title is the same as date in feeds.json file.
+                    # Checking if title is the same as title in feeds.json file.
                     # If the same, pass; do nothing.
                     if ((feed_data["date_title"]) == (results[0]["title"])):
                         pass
                     elif ((feed_data["date_title"]) != (results[0]["title"])):
                         results = await self.feed_to_md("set", name, feed_data)
                         logger.debug(f"Running feed_to_md at {datetime.datetime.now()}")
-                        rss_msg = f"""[{results[0]["title"]}]({results[0]["url"]})\n{results[0]["summary"]}"""
+                        rss_msg = f"""[{results[0]["title"]}]({results[0]["url"]})"""
                         await self.bot.sendMessage(msg["chat"]["id"], rss_msg, parse_mode="Markdown")
                 # Sleep for 30 mins before re-checking.
                 logger.debug("Sleeping for 30 mins.")
@@ -97,7 +98,7 @@ class RSS(telepot.aio.helper.ChatHandler):
 
 
 if __name__ == "__main__":
-    TOKEN = "Insert Key Here."
+    TOKEN = "Insert Token Here."
     bot = telepot.aio.DelegatorBot(TOKEN, [
         pave_event_space()(
             per_chat_id(), create_open, RSS, timeout=10),
