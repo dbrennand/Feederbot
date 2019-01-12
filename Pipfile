@@ -6,10 +6,10 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
+python-telegram-bot = "*"
+loguru = "*"
 feedparser = "*"
 html2text = "*"
-loguru = "*"
-telepot = "*"
 
 [requires]
 python_version = "3.7"
