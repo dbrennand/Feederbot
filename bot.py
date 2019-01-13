@@ -71,10 +71,8 @@ def file_reader(path, mode):
 
 
 def check_feeds(bot, job):
-    # Run forever.
     logger.debug("Checking Feeds...")
     feeds = file_reader("feeds.json", "r")
-
     for name, feed_data in feeds.items():
         results = feed_to_md(None, name, feed_data)
         # Checking if title is the same as title in feeds.json file.
@@ -86,7 +84,7 @@ def check_feeds(bot, job):
             logger.debug(f"Running feed_to_md at {datetime.datetime.now()}")
             rss_msg = f"""[{results[0]["title"]}]({results[0]["url"]})"""
             bot.send_message(chat_id="Insert User ID Here.", text=rss_msg, parse_mode="Markdown")
-    logger.debug("Sleeping for 30 mins.")
+    logger.debug("Sleeping for 30 mins...")
 
 
 if __name__ == "__main__":
