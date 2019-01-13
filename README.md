@@ -15,7 +15,7 @@ Insert **User's Chat ID** found in [bot.py](bot.py):
 Line 88: bot.send_message(chat_id="Insert User ID Here.", text=rss_msg, parse_mode="Markdown")
 ```
 
-Insert Bot Token into **TOKEN** variable found in [bot.py](bot.py):
+Insert Bot Token into **TOKEN** found in [bot.py](bot.py):
 ```
 Line 96: updater = Updater(token='Insert Bot Token Here.')
 ```
