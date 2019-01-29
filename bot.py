@@ -87,11 +87,20 @@ def check_feeds(bot, job):
     logger.debug("Sleeping for 30 mins...")
 
 
+def error(bot, update, error):
+    """Log errors which occur."""
+    logger.debug(error)
+
+
 if __name__ == "__main__":
     # Init logging.
     logger.start("file_{time}.log", rotation="300 MB")
     # Setup Updater for Bot.
     updater = Updater(token='Insert Bot Token Here.')
+    # Get the dispatcher to register handlers
+    dp = updater.dispatcher
+    # log all errors
+    dp.add_error_handler(error)
     # Run Job every 30 mins.
     j = updater.job_queue
     job_thirty_min = j.run_repeating(check_feeds, interval=1800, first=0)
