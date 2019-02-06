@@ -71,6 +71,7 @@ def file_reader(path, mode):
 
 
 def check_feeds(bot, job):
+    """Checks the provided feeds from feeds.json for a new post."""
     logger.debug("Checking Feeds...")
     feeds = file_reader("feeds.json", "r")
     for name, feed_data in feeds.items():
