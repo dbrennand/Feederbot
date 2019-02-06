@@ -10,5 +10,9 @@
   "mac_rumors": {
     "url": "http://feeds.macrumors.com/MacRumors-All",
     "date_title": ""
+  },
+  "haveibeenpwned": {
+    "url": "https://feeds.feedburner.com/HaveIBeenPwnedLatestBreaches",
+    "date_title": ""
   }
 }
