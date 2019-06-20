@@ -22,7 +22,7 @@ Line 96: updater = Updater(token='Insert Bot Token Here.')
 
 ## Authors -- Contributors
 
-* **Daniel Brennand** - *Author* - [Dextroz](https://github.com/Dextroz)
+* **Dextroz** - *Author* - [Dextroz](https://github.com/Dextroz)
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) for details.
