@@ -28,6 +28,8 @@ Install dependencies using [requirements.txt](requirements.txt): `pip install -r
 
 ### Container
 
+* Ensure you run these commands from inside this directory.
+
 To run inside a container, run the following commands: 
 
 1. `sudo podman build -t rss_feederbot .`
