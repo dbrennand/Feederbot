@@ -1,24 +1,28 @@
 # RSS_Feederbot [Telegram]
-A Telegram bot for reading RSS Feeds.
-Checks every 30 mins for news based on users chosen RSS feeds.
 
+A Telegram bot for reading RSS Feeds.
+
+Checks every 30 mins for news based on the user's chosen RSS feeds.
 
 ## Dependencies
-Install requirements using Pipfile:
-```
-pipenv install
-```
+
+Install dependencies using [requirements.txt](requirements.txt): `pip install -r requirements.txt`
 
 ## Usage
-Insert **User's Chat ID** found in [bot.py](bot.py):
-```
-Line 88: bot.send_message(chat_id="Insert User ID Here.", text=rss_msg, parse_mode="Markdown")
-```
 
-Insert Bot Token into **TOKEN** found in [bot.py](bot.py):
-```
-Line 96: updater = Updater(token='Insert Bot Token Here.')
-```
+1. Insert your user's chat ID found in [bot.py](bot.py):
+
+    - You can find your chat ID using [@userinfobot](https://telegram.me/userinfobot)
+
+    ```
+    bot.send_message(chat_id="Insert user ID here.", text=rss_msg, parse_mode="Markdown")
+    ```
+
+2. Provide your bot token to the Updater class object's token parameter found in [bot.py](bot.py):
+
+    ```
+    updater = Updater(token="Insert bot token here.")
+    ```
 
 ## Authors -- Contributors
 
