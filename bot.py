@@ -99,8 +99,8 @@ def check_feeds(context):
 def error(update, context):
     """
     Log errors which occur.
-    :param update: The update which caused the error.
-    :param context: The error which occurred.
+    :param update: The telegram Update class object which caused the error.
+    :param context: The telegram CallbackContext class object.
     """
     logger.debug(f"Update: {update} caused the error: {context.error}")
 
