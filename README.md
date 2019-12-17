@@ -21,7 +21,7 @@ Install dependencies using [requirements.txt](requirements.txt): `pip install -r
 2. Provide your bot token to the Updater class object's token parameter found in [bot.py](bot.py):
 
     ```
-    updater = Updater(token="Insert bot token here.")
+    updater = Updater(token="Insert bot token here.", use_context=True)
     ```
 
 ## Authors -- Contributors
