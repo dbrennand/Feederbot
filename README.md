@@ -8,7 +8,7 @@ Checks every 30 mins for news based on the user's chosen RSS feeds.
 
 Install dependencies using [requirements.txt](requirements.txt): `pip install -r requirements.txt`
 
-## Usage
+## Prerequisites
 
 1. Insert your user's chat ID found in [bot.py](bot.py):
 
@@ -23,6 +23,16 @@ Install dependencies using [requirements.txt](requirements.txt): `pip install -r
     ```
     updater = Updater(token="Insert bot token here.", use_context=True)
     ```
+
+3. Execute bot.py.
+
+### Container
+
+To run inside a container, run the following commands: 
+
+1. `sudo podman build -t rss_feederbot .`
+
+2. `sudo podman run --rm -v "$(pwd)":/home/app -w /home/app -t rss_feederbot`
 
 ## Authors -- Contributors
 
