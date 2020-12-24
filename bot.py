@@ -1,4 +1,5 @@
-from reader import make_reader, Entry, FeedExistsError, FeedNotFoundError
+from reader import make_reader, Reader, Entry, FeedExistsError, FeedNotFoundError
+from contextlib import closing
 from telegram import Update
 from telegram.ext import Updater, CallbackContext, CommandHandler
 from loguru import logger
@@ -18,8 +19,6 @@ class RSS_Feederbot(object):
         )
         # Setup Updater for RSS_Feederbot
         self.updater = Updater(token=os.environ["BOT_TOKEN"], use_context=True)
-        # Setup Reader object for duration of runtime
-        self.reader = make_reader("db.sqlite")
         # Create dictionary to compare latest RSS feed(s) entry title
         self.feeds_last_entry_title = {}
 
@@ -29,39 +28,43 @@ class RSS_Feederbot(object):
         """
         logger.debug(f"Update: {update} caused the error: {context.error}.")
 
-    def check_feeds(self, update: Update, context: CallbackContext) -> None:
+    def check_feeds(self, context: CallbackContext) -> None:
         """
         Background task to check RSS feed(s) for new content and send to the user on a repeated interval.
         """
         # Update RSS feed(s)
         logger.debug("Updating RSS feeds.")
-        self.reader.update_feeds(workers=10)
-        # Retrieve all feed(s)
-        logger.debug("Retrieving RSS feeds.")
-        feeds = self.reader.get_feeds(sort="added")
-        for feed in feeds:
-            logger.debug(f"Checking if feed: {feed.title} has updated.")
-            # Retrieve latest feed entry
-            latest_entry = list(self.reader.get_entries(feed=feed, sort="recent"))[0]
-            # Retrieve last known entry title for feed
-            feed_last_title = self.feeds_last_entry_title.get(feed.title, None)
-            # Compare last update title with latest RSS feed entry's title
-            # If different, feed has updated
-            # Update the dictionary and send message of new entry
-            if latest_entry.title != feed_last_title:
-                logger.debug(
-                    f"Feed has a new entry.\nPrevious title was: {feed_last_title} and new title is: {latest_entry.title}\nUpdating dictionary with new title and sending update..."
-                )
-                # Create Telegram message string
-                message = f"[{latest_entry.title}]({latest_entry.link})"
-                # Update dictionary with new title
-                self.feeds_last_entry_title[feed.title] = latest_entry.title
-                # Send Telegram message
-                update.message.reply_text(text=message, parse_mode="Markdown")
-            else:
-                logger.debug(
-                    "Feed: {feed.title} does not have a new entry. Checking next feed..."
-                )
+        # Use Reader object
+        with closing(make_reader("db.sqlite")) as reader:
+            reader.update_feeds(workers=10)
+            # Retrieve all feed(s)
+            logger.debug("Retrieving RSS feeds.")
+            feeds = reader.get_feeds(sort="added")
+            for feed in feeds:
+                logger.debug(f"Checking if feed: {feed.title} has updated.")
+                # Retrieve latest feed entry
+                latest_entry = list(reader.get_entries(feed=feed, sort="recent"))[0]
+                # Retrieve last known entry title for feed
+                feed_last_title = self.feeds_last_entry_title.get(feed.title, None)
+                # Compare last update title with latest RSS feed entry's title
+                # If different, feed has updated
+                # Update the dictionary and send message of new entry
+                if latest_entry.title != feed_last_title:
+                    logger.debug(
+                        f"Feed has a new entry.\nPrevious title was: {feed_last_title} and new title is: {latest_entry.title}\nUpdating dictionary with new title and sending update..."
+                    )
+                    # Create Telegram message string
+                    message = f"[{latest_entry.title}]({latest_entry.link})"
+                    # Update dictionary with new title
+                    self.feeds_last_entry_title[feed.title] = latest_entry.title
+                    # Send Telegram message
+                    context.bot.send_message(
+                        chat_id="", text=message, parse_mode="Markdown"
+                    )
+                else:
+                    logger.debug(
+                        f"Feed: {feed.title} does not have a new entry. Checking next feed..."
+                    )
         logger.debug("All feeds checked. Waiting for next run...")
 
     def start(self, update: Update, context: CallbackContext) -> None:
@@ -80,18 +83,24 @@ class RSS_Feederbot(object):
         except IndexError:
             update.message.reply_text("Provide a feed URL and interval to /start.")
             return
+        # Use Reader object
         # Add initial RSS feed URL to the Reader
-        # Also, begin running the Job immediately
-        try:
-            self.reader.add_feed(feed_url)
-            self.updater.dispatcher.job_queue.run_repeating(
-                self.check_feeds, interval=interval, first=0, name="check_feeds"
-            )
-        except FeedExistsError as err:
-            logger.debug(f"Feed already exists: {err}.")
-            update.message.reply_text(
-                "The feed URL: {feed_url} already exists. You most likely have already ran /start."
-            )
+        # Begin running the Job immediately
+        with closing(make_reader("db.sqlite")) as reader:
+            try:
+                reader.add_feed(feed_url)
+                self.updater.job_queue.run_repeating(
+                    self.check_feeds, interval=interval, first=0
+                )
+                logger.debug(f"Started background Job to check RSS feed: {feed_url}")
+                update.message.reply_text(
+                    f"Background Job started. Starting to check RSS feed: {feed_url}."
+                )
+            except FeedExistsError as err:
+                logger.debug(f"Feed already exists: {err}.")
+                update.message.reply_text(
+                    f"The feed URL: {feed_url} already exists. You most likely have already ran /start."
+                )
 
     def manage_feed(self, update: Update, context: CallbackContext) -> None:
         """
@@ -113,28 +122,34 @@ class RSS_Feederbot(object):
             update.message.reply_text(
                 "Provide a option and feed URL to /managefeed.\nOption can be either Add or Remove."
             )
-        # Check if a RSS feed is being added or removed
-        if option.lower() == "add":
-            try:
-                self.reader.add_feed(feed_url)
-            except FeedExistsError as err:
-                logger.debug(f"The RSS feed: {feed_url} has already been added: {err}.")
-                update.message.reply_text(
-                    f"The RSS feed: {feed_url} has already been added."
+        # Use Reader object
+        with closing(make_reader("db.sqlite")) as reader:
+            # Check if a RSS feed is being added or removed
+            if option.lower() == "add":
+                try:
+                    reader.add_feed(feed_url)
+                except FeedExistsError as err:
+                    logger.debug(
+                        f"The RSS feed: {feed_url} has already been added: {err}."
+                    )
+                    update.message.reply_text(
+                        f"The RSS feed: {feed_url} has already been added."
+                    )
+            elif option.lower() == "remove":
+                try:
+                    reader.remove_feed(feed_url)
+                except FeedNotFoundError as err:
+                    logger.debug(f"The RSS feed: {feed_url} was not found: {err}.")
+                    update.message.reply_text(
+                        f"The RSS feed: {feed_url} was not found.\nTry adding it using '/managefeed add https://examplefeedurl.com'."
+                    )
+            else:
+                logger.debug(
+                    f"The option: {option} provided to /managefeed was invalid."
                 )
-        elif option.lower() == "remove":
-            try:
-                self.reader.remove_feed(feed_url)
-            except FeedNotFoundError as err:
-                logger.debug(f"The RSS feed: {feed_url} was not found: {err}.")
                 update.message.reply_text(
-                    f"The RSS feed: {feed_url} was not found.\nTry adding it using '/managefeed add https://examplefeedurl.com'."
+                    f"The option: {option} provided was invalid. The option can be either Add or Remove."
                 )
-        else:
-            logger.debug(f"The option: {option} provided to /managefeed was invalid.")
-            update.message.reply_text(
-                f"The option: {option} provided was invalid. The option can be either Add or Remove."
-            )
 
     def change_interval(self, update: Update, context: CallbackContext) -> None:
         """
