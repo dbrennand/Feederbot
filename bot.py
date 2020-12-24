@@ -1,126 +1,172 @@
-try:
-    from telegram.ext import Updater
-    import feedparser, html2text, json, datetime
-    from loguru import logger
-except ImportError as err:
-    raise ImportError(f"Failed to import required modules: {err}")
+from reader import make_reader, Entry, FeedExistsError, FeedNotFoundError
+from telegram import Update
+from telegram.ext import Updater, CallbackContext, CommandHandler
+from loguru import logger
+import os
 
 
-def date_title(file_name: str, object_name: str, date_title: str):
+class RSS_Feederbot(object):
     """
-    Set the date/title of latest post from a source.
-    :param file_name: The name of the file to open.
-    :param object_name: The name of the object to replace.
-    :param date_title: The date/title to replace the existing object with.
+    Class for RSS_Feederbot.
     """
-    try:
-        with open(file_name, "r+") as data_file:
-            # Load json structure into memory.
-            feeds = json.load(data_file)
-            for name, data in feeds.items():
-                if (name) == (object_name):
-                    # Replace value of date/title with date_title
-                    data["date_title"] = date_title
-                    # Go to the top of feeds.json file.
-                    data_file.seek(0)
-                    # Dump the new json structure to the file.
-                    json.dump(feeds, data_file, indent=2)
-                    data_file.truncate()
-    except IOError:
-        logger.debug("date_title: Failed to open requested file.")
 
+    def __init__(self):
+        # Create log file
+        logger.add(
+            "rss_feederbot_{time}.log",
+            format="{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}",
+        )
+        # Setup Updater for RSS_Feederbot
+        self.updater = Updater(token=os.environ["BOT_TOKEN"], use_context=True)
+        # Setup Reader object for duration of runtime
+        self.reader = make_reader("db.sqlite")
+        # Create dictionary to compare latest RSS feed(s) entry title
+        self.feeds_last_entry_title = {}
 
-def feed_to_md(name: str, feed_data: dict):
-    """
-    Converts an RSS feed into markdown text.
-    :param name: The name of the RSS feed. eg: hacker_news.
-    :param feed_data: The data of the feed. eg: url and post_date from feeds.json.
-    :rtype: A dict object containing data about the top feed item.
-    """
-    # Parse RSS feed.
-    d = feedparser.parse(feed_data["url"])
-    # Target the first post.
-    first_post = d["entries"][0]
-    h = html2text.HTML2Text()
-    h.ignore_images = True
-    h.ignore_links = True
-    summary = first_post["summary"]
-    summary = h.handle(summary)
-    result = {
-        "title": first_post["title"],
-        "summary": summary,
-        "url": first_post["link"],
-        "post_date": first_post["published"],
-    }
-    return result
+    def error_handler(self, update: Update, context: CallbackContext) -> None:
+        """
+        Log the error for debugging purposes.
+        """
+        logger.debug(f"Update: {update} caused the error: {context.error}.")
 
+    def check_feeds(self, update: Update, context: CallbackContext) -> None:
+        """
+        Background task to check RSS feed(s) for new content and send to the user on a repeated interval.
+        """
+        # Update RSS feed(s)
+        logger.debug("Updating RSS feeds.")
+        self.reader.update_feeds(workers=10)
+        # Retrieve all feed(s)
+        logger.debug("Retrieving RSS feeds.")
+        feeds = self.reader.get_feeds(sort="added")
+        for feed in feeds:
+            logger.debug(f"Checking if feed: {feed.title} has updated.")
+            # Retrieve latest feed entry
+            latest_entry = list(self.reader.get_entries(feed=feed, sort="recent"))[0]
+            # Retrieve last known entry title for feed
+            feed_last_title = self.feeds_last_entry_title.get(feed.title, None)
+            # Compare last update title with latest RSS feed entry's title
+            # If different, feed has updated
+            # Update the dictionary and send message of new entry
+            if latest_entry.title != feed_last_title:
+                logger.debug(
+                    f"Feed has a new entry.\nPrevious title was: {feed_last_title} and new title is: {latest_entry.title}\nUpdating dictionary with new title and sending update..."
+                )
+                # Create Telegram message string
+                message = f"[{latest_entry.title}]({latest_entry.link})"
+                # Update dictionary with new title
+                self.feeds_last_entry_title[feed.title] = latest_entry.title
+                # Send Telegram message
+                update.message.reply_text(text=message, parse_mode="Markdown")
+            else:
+                logger.debug(
+                    "Feed: {feed.title} does not have a new entry. Checking next feed..."
+                )
+        logger.debug("All feeds checked. Waiting for next run...")
 
-def file_reader(path: str, mode: str):
-    """
-    Loads JSON data from the file path specified.
-    :param path: The path to the target file to open.
-    :param mode: The mode to open the target file in.
-    :rtype: JSON data from the specified file.
-    """
-    try:
-        with open(path, mode) as target_file:
-            data = json.load(target_file)
-            return data
-    except IOError:
-        logger.debug(f"Failed to open the file: {path}")
+    def start(self, update: Update, context: CallbackContext) -> None:
+        """
+        Begin running Job to check RSS feed.
 
-
-def check_feeds(context):
-    """
-    Checks RSS feeds from feeds.json for a new post.
-    :param context: The telegram CallbackContext class object.
-    """
-    logger.debug("Checking if feeds have updated...")
-    feeds = file_reader("feeds.json", "r")
-    for name, feed_data in feeds.items():
-        logger.debug(f"Checking if feed: {name} requires updating...")
-        result = feed_to_md(name, feed_data)
-        # Checking if title is the same as title in feeds.json file.
-        # If the same; do nothing.
-        if (feed_data["date_title"]) == (result["title"]):
-            logger.debug(f"Feed: {name} does not require any updates.")
-            continue
-        elif (feed_data["date_title"]) != (result["title"]):
-            logger.debug(
-                f"Feed: {name} requires updating! Running date_title for feeds.json."
+        Command args (required):
+            * Feed URL: The URL of the initial feed to get updates for.
+            * Interval: The interval in seconds to run the update Job on.
+        """
+        # Retrieve RSS feed URL provided to begin
+        try:
+            feed_url = str(context.args[0])
+            interval = int(context.args[1])
+            logger.debug(f"RSS feed URL: {feed_url}, interval: {interval}.")
+        except IndexError:
+            update.message.reply_text("Provide a feed URL and interval to /start.")
+            return
+        # Add initial RSS feed URL to the Reader
+        # Also, begin running the Job immediately
+        try:
+            self.reader.add_feed(feed_url)
+            self.updater.dispatcher.job_queue.run_repeating(
+                self.check_feeds, interval=interval, first=0, name="check_feeds"
             )
-            date_title("feeds.json", name, result["title"])
-            # Set RSS message.
-            rss_msg = f"[{result['title']}]({result['url']})"
-            context.bot.send_message(chat_id="Insert user ID here.", text=rss_msg, parse_mode="Markdown")
-    logger.debug("Sleeping for 30 mins...")
+        except FeedExistsError as err:
+            logger.debug(f"Feed already exists: {err}.")
+            update.message.reply_text(
+                "The feed URL: {feed_url} already exists. You most likely have already ran /start."
+            )
 
+    def manage_feed(self, update: Update, context: CallbackContext) -> None:
+        """
+        Adds or removes a RSS feed.
 
-def error(update, context):
-    """
-    Log errors which occur.
-    :param update: The telegram Update class object which caused the error.
-    :param context: The telegram CallbackContext class object.
-    """
-    logger.debug(f"Update: {update} caused the error: {context.error}")
+        Command args (required):
+            * Option: Can be either 'Add' or 'Remove'.
+            * Feed URL: The URL of the RSS feed to add or remove.
+        """
+        # Retrieve option and RSS feed URL
+        try:
+            option = context.args[0]
+            feed_url = context.args[1]
+            logger.debug(f"Option: {option}, RSS feed URL: {feed_url}.")
+        except IndexError as err:
+            logger.debug(
+                f"Failed to retrieve option and feed URL for /managefeed: {err}."
+            )
+            update.message.reply_text(
+                "Provide a option and feed URL to /managefeed.\nOption can be either Add or Remove."
+            )
+        # Check if a RSS feed is being added or removed
+        if option.lower() == "add":
+            try:
+                self.reader.add_feed(feed_url)
+            except FeedExistsError as err:
+                logger.debug(f"The RSS feed: {feed_url} has already been added: {err}.")
+                update.message.reply_text(
+                    f"The RSS feed: {feed_url} has already been added."
+                )
+        elif option.lower() == "remove":
+            try:
+                self.reader.remove_feed(feed_url)
+            except FeedNotFoundError as err:
+                logger.debug(f"The RSS feed: {feed_url} was not found: {err}.")
+                update.message.reply_text(
+                    f"The RSS feed: {feed_url} was not found.\nTry adding it using '/managefeed add https://examplefeedurl.com'."
+                )
+        else:
+            logger.debug(f"The option: {option} provided to /managefeed was invalid.")
+            update.message.reply_text(
+                f"The option: {option} provided was invalid. The option can be either Add or Remove."
+            )
+
+    def change_interval(self, update: Update, context: CallbackContext) -> None:
+        """
+        Alter the interval to check for new RSS feed entires.
+
+        Command args (required):
+            * Interval: The interval in seconds to run the update Job on.
+        """
+        pass
+
+    def start_bot(self) -> None:
+        """
+        Start RSS_Feederbot.
+        """
+        logger.debug("Starting RSS_Feederbot and registering commands.")
+        dispatcher = self.updater.dispatcher
+        # Register error handler
+        dispatcher.add_error_handler(self.error_handler)
+        # Register commands
+        dispatcher.add_handler(CommandHandler("start", self.start, pass_args=True))
+        dispatcher.add_handler(
+            CommandHandler("managefeed", self.manage_feed, pass_args=True)
+        )
+        dispatcher.add_handler(
+            CommandHandler("changeinterval", self.change_interval, pass_args=True)
+        )
+        # Start RSS_Feederbot
+        self.updater.start_polling()
+        self.updater.idle()
 
 
 if __name__ == "__main__":
-    __version__ = "0.0.2"
-    # Init logging.
-    logger.add(
-        "bot_{time}.log",
-        format="{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}",
-        rotation="300 MB",
-    )
-    # Setup Updater for bot.
-    updater = Updater(token="Insert bot token here.", use_context=True)
-    # Get the dispatcher to register handlers.
-    dp = updater.dispatcher
-    # log all errors.
-    dp.add_error_handler(error)
-    # Run Job every 30 mins.
-    j = updater.job_queue
-    job_thirty_min = j.run_repeating(check_feeds, interval=1800, first=0)
-    # Begin running the bot.
-    updater.start_polling()
+    __version__ = "0.0.3"
+    rss_feederbot = RSS_Feederbot()
+    rss_feederbot.start_bot()
