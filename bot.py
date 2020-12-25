@@ -26,7 +26,7 @@ class RSS_Feederbot(object):
         """
         Log the error for debugging purposes.
         """
-        logger.debug(f"Update: {update} caused the error: {context.error}.")
+        logger.debug(f"Update: {update}\nError: {context.error}.")
 
     def check_feeds(self, context: CallbackContext) -> None:
         """
@@ -59,7 +59,7 @@ class RSS_Feederbot(object):
                     self.feeds_last_entry_title[feed.title] = latest_entry.title
                     # Send Telegram message
                     context.bot.send_message(
-                        chat_id="", text=message, parse_mode="Markdown"
+                        chat_id=context.job.context, text=message, parse_mode="Markdown"
                     )
                 else:
                     logger.debug(
@@ -89,12 +89,15 @@ class RSS_Feederbot(object):
         with closing(make_reader("db.sqlite")) as reader:
             try:
                 reader.add_feed(feed_url)
-                self.updater.job_queue.run_repeating(
-                    self.check_feeds, interval=interval, first=0
+                context.job_queue.run_repeating(
+                    self.check_feeds,
+                    interval=interval,
+                    first=0.1,
+                    context=update.message.chat_id,
                 )
-                logger.debug(f"Started background Job to check RSS feed: {feed_url}")
+                logger.debug(f"Starting background Job to check RSS feed: {feed_url}")
                 update.message.reply_text(
-                    f"Background Job started. Starting to check RSS feed: {feed_url}."
+                    f"Background Job starting to check RSS feed: {feed_url}."
                 )
             except FeedExistsError as err:
                 logger.debug(f"Feed already exists: {err}.")
@@ -128,6 +131,10 @@ class RSS_Feederbot(object):
             if option.lower() == "add":
                 try:
                     reader.add_feed(feed_url)
+                    logger.debug(f"Successfully added RSS feed: {feed_url}.")
+                    update.message.reply_text(
+                        f"The RSS feed: {feed_url} was successfully added."
+                    )
                 except FeedExistsError as err:
                     logger.debug(
                         f"The RSS feed: {feed_url} has already been added: {err}."
@@ -138,6 +145,10 @@ class RSS_Feederbot(object):
             elif option.lower() == "remove":
                 try:
                     reader.remove_feed(feed_url)
+                    logger.debug(f"Successfully removed RSS feed: {feed_url}.")
+                    update.message.reply_text(
+                        f"The RSS feed: {feed_url} was successfully removed."
+                    )
                 except FeedNotFoundError as err:
                     logger.debug(f"The RSS feed: {feed_url} was not found: {err}.")
                     update.message.reply_text(
