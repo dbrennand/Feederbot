@@ -38,10 +38,10 @@ class RSS_Feederbot(object):
         with closing(make_reader("db.sqlite")) as reader:
             reader.update_feeds(workers=10)
             # Retrieve all feed(s)
-            logger.debug("Retrieving RSS feeds.")
+            logger.debug("Retrieving RSS feed(s).")
             feeds = reader.get_feeds(sort="added")
             for feed in feeds:
-                logger.debug(f"Checking if feed: {feed.title} has updated.")
+                logger.debug(f"Checking if RSS feed: {feed.title} has updated.")
                 # Retrieve latest feed entry
                 latest_entry = list(reader.get_entries(feed=feed, sort="recent"))[0]
                 # Retrieve last known entry title for feed
@@ -51,7 +51,7 @@ class RSS_Feederbot(object):
                 # Update the dictionary and send message of new entry
                 if latest_entry.title != feed_last_title:
                     logger.debug(
-                        f"Feed has a new entry.\nPrevious title was: {feed_last_title} and new title is: {latest_entry.title}\nUpdating dictionary with new title and sending update..."
+                        f"RSS feed: {feed.title} has a new entry.\nPrevious title was: {feed_last_title} and new title is: {latest_entry.title}\nUpdating dictionary with new title and sending update..."
                     )
                     # Create Telegram message string
                     message = f"[{latest_entry.title}]({latest_entry.link})"
@@ -63,13 +63,13 @@ class RSS_Feederbot(object):
                     )
                 else:
                     logger.debug(
-                        f"Feed: {feed.title} does not have a new entry. Checking next feed..."
+                        f"Feed: {feed.title} does not have a new entry. Checking next RSS feed..."
                     )
-        logger.debug("All feeds checked. Waiting for next run...")
+        logger.debug("All RSS feeds checked. Waiting for next run...")
 
     def start(self, update: Update, context: CallbackContext) -> None:
         """
-        Begin running Job to check RSS feed.
+        Begin running Job to check RSS feeds.
 
         Command args (required):
             * Feed URL: The URL of the initial feed to get updates for.
@@ -81,7 +81,7 @@ class RSS_Feederbot(object):
             interval = int(context.args[1])
             logger.debug(f"RSS feed URL: {feed_url}, interval: {interval}.")
         except IndexError:
-            update.message.reply_text("Provide a feed URL and interval to /start.")
+            update.message.reply_text("Provide an RSS feed URL and interval to /start.")
             return
         # Use Reader object
         # Add initial RSS feed URL to the Reader
@@ -94,21 +94,22 @@ class RSS_Feederbot(object):
                     interval=interval,
                     first=0.1,
                 )
-                # Set user's chat ID to be used in Job
+                # Set user's chat ID to be used in the Job
                 self.user_chat_id = update.message.from_user.id
+                logger.debug(f"User's chat ID: {self.user_chat_id}.")
                 logger.debug(f"Starting background Job to check RSS feed: {feed_url}")
                 update.message.reply_text(
                     f"Background Job starting to check RSS feed: {feed_url}."
                 )
             except FeedExistsError as err:
-                logger.debug(f"Feed already exists: {err}.")
+                logger.debug(f"RSS feed already exists: {err}.")
                 update.message.reply_text(
-                    f"The feed URL: {feed_url} already exists. You most likely have already ran /start."
+                    f"The RSS feed URL: {feed_url} already exists. You most likely have already ran /start."
                 )
 
     def manage_feed(self, update: Update, context: CallbackContext) -> None:
         """
-        Adds or removes a RSS feed.
+        Adds or removes an RSS feed.
 
         Command args (required):
             * Option: Can be either 'Add' or 'Remove'.
@@ -121,10 +122,10 @@ class RSS_Feederbot(object):
             logger.debug(f"Option: {option}, RSS feed URL: {feed_url}.")
         except IndexError as err:
             logger.debug(
-                f"Failed to retrieve option and feed URL for /managefeed: {err}."
+                f"Failed to retrieve option and RSS feed URL for /managefeed: {err}."
             )
             update.message.reply_text(
-                "Provide a option and feed URL to /managefeed.\nOption can be either Add or Remove."
+                "Provide a option and RSS feed URL to /managefeed.\nOption can be either Add or Remove."
             )
         # Use Reader object
         with closing(make_reader("db.sqlite")) as reader:
@@ -163,17 +164,24 @@ class RSS_Feederbot(object):
                     f"The option: {option} provided was invalid. The option can be either Add or Remove."
                 )
 
+    def show_feeds(self, update: Update, context: CallbackContext) -> None:
+        """
+        Show RSS feed(s) currently being checked for updates.
+        """
+        # Use Reader object
+        with closing(make_reader("db.sqlite")) as reader:
+            # Obtain RSS feed(s) currently being checked for updates
+            feeds = list(reader.get_feeds(sort="added"))
+        update.message.reply_text(
+            f"RSS feeds being checked for updates: {[feed.url for feed in feeds]}."
+        )
+
     def change_interval(self, update: Update, context: CallbackContext) -> None:
         """
         Alter the interval to check for new RSS feed entires.
 
         Command args (required):
             * Interval: The interval in seconds to run the update Job on.
-        """
-        pass
-
-    def show_feeds() -> None:
-        """
         """
         pass
 
