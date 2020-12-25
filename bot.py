@@ -47,7 +47,7 @@ class RSS_Feederbot(object):
                 # Retrieve last known entry title for feed
                 feed_last_title = self.feeds_last_entry_title.get(feed.title, None)
                 # Compare last update title with latest RSS feed entry's title
-                # If different, feed has updated
+                # If differ ent, feed has updated
                 # Update the dictionary and send message of new entry
                 if latest_entry.title != feed_last_title:
                     logger.debug(
@@ -59,7 +59,7 @@ class RSS_Feederbot(object):
                     self.feeds_last_entry_title[feed.title] = latest_entry.title
                     # Send Telegram message
                     context.bot.send_message(
-                        chat_id=context.job.context, text=message, parse_mode="Markdown"
+                        chat_id=self.user_chat_id, text=message, parse_mode="Markdown"
                     )
                 else:
                     logger.debug(
@@ -93,8 +93,9 @@ class RSS_Feederbot(object):
                     self.check_feeds,
                     interval=interval,
                     first=0.1,
-                    context=update.message.chat_id,
                 )
+                # Set user's chat ID to be used in Job
+                self.user_chat_id = update.message.from_user.id
                 logger.debug(f"Starting background Job to check RSS feed: {feed_url}")
                 update.message.reply_text(
                     f"Background Job starting to check RSS feed: {feed_url}."
@@ -168,6 +169,11 @@ class RSS_Feederbot(object):
 
         Command args (required):
             * Interval: The interval in seconds to run the update Job on.
+        """
+        pass
+
+    def show_feeds() -> None:
+        """
         """
         pass
 
