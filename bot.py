@@ -93,7 +93,7 @@ class RSS_Feederbot(object):
                 reader.add_feed(feed_url)
                 logger.debug(f"Starting background Job to check RSS feed: {feed_url}.")
                 context.job_queue.run_repeating(
-                    self.check_feeds, interval=interval, first=0, name="check_feeds"
+                    self.check_feeds, interval=interval, first=0.1, name="check_feeds"
                 )
                 # Set user's ID to be used in the background Job
                 self.user_id = update.message.from_user.id
@@ -209,12 +209,22 @@ class RSS_Feederbot(object):
             f"Attemping to create new background Job with a {interval} second interval."
         )
         context.job_queue.run_repeating(
-            self.check_feeds, interval=interval, first=0, name="check_feeds"
+            self.check_feeds, interval=interval, first=0.1, name="check_feeds"
         )
         logger.debug(f"Successfully created new background Job.")
         update.message.reply_text(
             f"Successfully created new background Job with a {interval} second interval."
         )
+
+    def show_job(self, update: Update, context: CallbackContext) -> None:
+        """
+        Utility function to show the currently running background Job(s), if any.
+        """
+        jobs = list(context.job_queue.jobs())
+        for job in jobs:
+            logger.debug(f"Background Job: {job.name} next run is on: {job.next_t.strftime('%m/%d/%Y, %H:%M:%S')}")
+        update.message.reply_text(f"Background Job(s) currently running are: {[job.name for job in jobs]}")
+
 
     def start_bot(self) -> None:
         """
@@ -237,6 +247,13 @@ class RSS_Feederbot(object):
                 "changeinterval",
                 self.change_interval,
                 pass_args=True,
+                pass_job_queue=True,
+            )
+        )
+        dispatcher.add_handler(
+            CommandHandler(
+                "showjob",
+                self.show_job,
                 pass_job_queue=True,
             )
         )
