@@ -57,9 +57,10 @@ class RSS_Feederbot(object):
                     message = f"[{latest_entry.title}]({latest_entry.link})"
                     # Update dictionary with new title
                     self.feeds_last_entry_title[feed.title] = latest_entry.title
+                    logger.debug(self.feeds_last_entry_title)
                     # Send Telegram message
                     context.bot.send_message(
-                        chat_id=self.user_chat_id, text=message, parse_mode="Markdown"
+                        chat_id=self.user_id, text=message, parse_mode="Markdown"
                     )
                 else:
                     logger.debug(
@@ -69,42 +70,41 @@ class RSS_Feederbot(object):
 
     def start(self, update: Update, context: CallbackContext) -> None:
         """
-        Begin running Job to check RSS feeds.
+        Begin running the background Job to check RSS feeds.
 
         Command args (required):
             * Feed URL: The URL of the initial feed to get updates for.
-            * Interval: The interval in seconds to run the update Job on.
+            * Interval: The interval in seconds to run the background Job on.
         """
         # Retrieve RSS feed URL provided to begin
         try:
             feed_url = str(context.args[0])
             interval = int(context.args[1])
             logger.debug(f"RSS feed URL: {feed_url}, interval: {interval}.")
-        except IndexError:
+        except IndexError as err:
+            logger.debug(f"Failed to retrieve RSS feed URL and interval: {err}.")
             update.message.reply_text("Provide an RSS feed URL and interval to /start.")
             return
         # Use Reader object
         # Add initial RSS feed URL to the Reader
-        # Begin running the Job immediately
+        # Begin running the background Job immediately
         with closing(make_reader("db.sqlite")) as reader:
             try:
                 reader.add_feed(feed_url)
+                logger.debug(f"Starting background Job to check RSS feed: {feed_url}.")
                 context.job_queue.run_repeating(
-                    self.check_feeds,
-                    interval=interval,
-                    first=0.1,
+                    self.check_feeds, interval=interval, first=0, name="check_feeds"
                 )
-                # Set user's chat ID to be used in the Job
-                self.user_chat_id = update.message.from_user.id
-                logger.debug(f"User's chat ID: {self.user_chat_id}.")
-                logger.debug(f"Starting background Job to check RSS feed: {feed_url}")
+                # Set user's ID to be used in the background Job
+                self.user_id = update.message.from_user.id
+                logger.debug(f"User's ID: {self.user_id}.")
                 update.message.reply_text(
-                    f"Background Job starting to check RSS feed: {feed_url}."
+                    f"Background Job started to check RSS feed: {feed_url}."
                 )
             except FeedExistsError as err:
                 logger.debug(f"RSS feed already exists: {err}.")
                 update.message.reply_text(
-                    f"The RSS feed URL: {feed_url} already exists. You most likely have already ran /start."
+                    f"The RSS feed URL: {feed_url} already exists. You most have already ran /start."
                 )
 
     def manage_feed(self, update: Update, context: CallbackContext) -> None:
@@ -125,8 +125,9 @@ class RSS_Feederbot(object):
                 f"Failed to retrieve option and RSS feed URL for /managefeed: {err}."
             )
             update.message.reply_text(
-                "Provide a option and RSS feed URL to /managefeed.\nOption can be either Add or Remove."
+                "Provide an option and RSS feed URL to /managefeed.\nOption can be either Add or Remove."
             )
+            return
         # Use Reader object
         with closing(make_reader("db.sqlite")) as reader:
             # Check if a RSS feed is being added or removed
@@ -181,9 +182,39 @@ class RSS_Feederbot(object):
         Alter the interval to check for new RSS feed entires.
 
         Command args (required):
-            * Interval: The interval in seconds to run the update Job on.
+            * Interval: The interval in seconds to run the background Job on.
         """
-        pass
+        # Retrieve interval
+        try:
+            interval = int(context.args[0])
+            logger.debug(f"Interval: {interval}.")
+        except IndexError as err:
+            logger.debug(f"Failed to retrieve interval /changeinterval: {err}.")
+            update.message.reply_text("Provide an interval to /changeinterval.")
+            return
+        # Remove the previous background Job
+        try:
+            logger.debug(f"Attempting to remove previous background Job.")
+            for job in context.job_queue.get_jobs_by_name("check_feeds"):
+                job.schedule_removal()
+            logger.debug("Successfully removed previous background Job.")
+        except:  # TODO: Find out what exception occurs here
+            logger.debug("Failed to remove previous background Job.")
+            update.message.reply_text(
+                "Failed to remove previous background Job. Have your ran /start?"
+            )
+            return
+        # Create a new background Job using provided interval
+        logger.debug(
+            f"Attemping to create new background Job with a {interval} second interval."
+        )
+        context.job_queue.run_repeating(
+            self.check_feeds, interval=interval, first=0, name="check_feeds"
+        )
+        logger.debug(f"Successfully created new background Job.")
+        update.message.reply_text(
+            f"Successfully created new background Job with a {interval} second interval."
+        )
 
     def start_bot(self) -> None:
         """
@@ -199,7 +230,15 @@ class RSS_Feederbot(object):
             CommandHandler("managefeed", self.manage_feed, pass_args=True)
         )
         dispatcher.add_handler(
-            CommandHandler("changeinterval", self.change_interval, pass_args=True)
+            CommandHandler("showfeed", self.show_feeds, pass_args=True)
+        )
+        dispatcher.add_handler(
+            CommandHandler(
+                "changeinterval",
+                self.change_interval,
+                pass_args=True,
+                pass_job_queue=True,
+            )
         )
         # Start RSS_Feederbot
         self.updater.start_polling()
