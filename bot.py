@@ -183,7 +183,7 @@ class RSS_Feederbot(object):
             for job in context.job_queue.jobs():
                 job.schedule_removal()
             logger.debug("Successfully removed previous background Job.")
-        except:  # TODO: Find out what exception occurs here
+        except:
             logger.debug("Failed to remove previous background Job.")
             update.message.reply_text(
                 "Failed to remove previous background Job. Have your ran /start?"
