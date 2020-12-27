@@ -1,4 +1,4 @@
-from reader import make_reader, Reader, Entry, FeedExistsError, FeedNotFoundError
+from reader import make_reader, FeedExistsError, FeedNotFoundError
 from contextlib import closing
 from telegram import Update
 from telegram.ext import Updater, CallbackContext, CommandHandler
