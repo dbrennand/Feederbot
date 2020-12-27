@@ -30,14 +30,14 @@ class RSS_Feederbot(object):
 
     def check_feeds(self, context: CallbackContext) -> None:
         """
-        Background task to check RSS feed(s) for new content and send to the user on a repeated interval.
+        Background task to check RSS feed(s) for updates and send to the user on a repeated interval.
         """
         # Update RSS feed(s)
         logger.debug("Updating RSS feeds.")
         # Use Reader object
         with closing(make_reader("db.sqlite")) as reader:
             reader.update_feeds(workers=10)
-            # Retrieve all feed(s)
+            # Retrieve all RSS feeds
             logger.debug("Retrieving RSS feed(s).")
             feeds = reader.get_feeds(sort="added")
             for feed in feeds:
@@ -51,61 +51,45 @@ class RSS_Feederbot(object):
                 # Update the dictionary and send message of new entry
                 if latest_entry.title != feed_last_title:
                     logger.debug(
-                        f"RSS feed: {feed.title} has a new entry.\nPrevious title was: {feed_last_title} and new title is: {latest_entry.title}\nUpdating dictionary with new title and sending update..."
+                        f"RSS feed: {feed.title} has been updated.\nPrevious entry title was: {feed_last_title} and new entry title is: {latest_entry.title}\nUpdating dictionary with new title and sending update..."
                     )
                     # Create Telegram message string
                     message = f"[{latest_entry.title}]({latest_entry.link})"
                     # Update dictionary with new title
                     self.feeds_last_entry_title[feed.title] = latest_entry.title
-                    logger.debug(self.feeds_last_entry_title)
                     # Send Telegram message
                     context.bot.send_message(
                         chat_id=self.user_id, text=message, parse_mode="Markdown"
                     )
                 else:
                     logger.debug(
-                        f"Feed: {feed.title} does not have a new entry. Checking next RSS feed..."
+                        f"RSS feed: {feed.title} has not been updated. Checking next RSS feed..."
                     )
         logger.debug("All RSS feeds checked. Waiting for next run...")
 
     def start(self, update: Update, context: CallbackContext) -> None:
         """
-        Begin running the background Job to check RSS feeds.
+        Begin running the background Job to check RSS feed(s) for updates.
 
         Command args (required):
-            * Feed URL: The URL of the initial feed to get updates for.
             * Interval: The interval in seconds to run the background Job on.
         """
-        # Retrieve RSS feed URL provided to begin
+        # Retrieve interval
         try:
-            feed_url = str(context.args[0])
-            interval = int(context.args[1])
-            logger.debug(f"RSS feed URL: {feed_url}, interval: {interval}.")
+            interval = int(context.args[0])
+            logger.debug(f"Interval: {interval}.")
         except IndexError as err:
-            logger.debug(f"Failed to retrieve RSS feed URL and interval: {err}.")
-            update.message.reply_text("Provide an RSS feed URL and interval to /start.")
+            logger.debug(f"Failed to retrieve interval for /start: {err}.")
+            update.message.reply_text("Provide an interval to /start.")
             return
-        # Use Reader object
-        # Add initial RSS feed URL to the Reader
-        # Begin running the background Job immediately
-        with closing(make_reader("db.sqlite")) as reader:
-            try:
-                logger.debug(f"Attempting to add RSS feed: {feed_url}.")
-                reader.add_feed(feed_url)
-            except FeedExistsError as err:
-                logger.debug(f"RSS feed already exists: {err}.")
-                update.message.reply_text(
-                    f"The RSS feed URL: {feed_url} already exists. You most have already ran /start."
-                )
-                return
-            logger.debug(f"Starting background Job to check RSS feed: {feed_url}.")
-            # Set user's ID to be used in the background Job
-            self.user_id = update.message.from_user.id
-            logger.debug(f"User's ID: {self.user_id}.")
-            job = context.job_queue.run_repeating(
-                self.check_feeds, interval=interval, name="check_feeds"
-            )
-            job.run(context.dispatcher)
+        logger.debug(
+            f"Starting background Job with interval: {interval} to check RSS feed(s) for updates."
+        )
+        # Set user's ID to be used in the background Job
+        self.user_id = update.message.from_user.id
+        logger.debug(f"User's ID: {self.user_id}.")
+        job = context.job_queue.run_repeating(self.check_feeds, interval=interval)
+        job.run(context.dispatcher)
 
     def manage_feed(self, update: Update, context: CallbackContext) -> None:
         """
@@ -130,7 +114,7 @@ class RSS_Feederbot(object):
             return
         # Use Reader object
         with closing(make_reader("db.sqlite")) as reader:
-            # Check if a RSS feed is being added or removed
+            # Check if an RSS feed is being added or removed
             if option.lower() == "add":
                 try:
                     reader.add_feed(feed_url)
@@ -174,12 +158,12 @@ class RSS_Feederbot(object):
             # Obtain RSS feed(s) currently being checked for updates
             feeds = list(reader.get_feeds(sort="added"))
         update.message.reply_text(
-            f"RSS feeds being checked for updates: {[feed.url for feed in feeds]}."
+            f"The following RSS feed(s) are being checked for updates: {[feed.url for feed in feeds]}."
         )
 
     def change_interval(self, update: Update, context: CallbackContext) -> None:
         """
-        Alter the interval to check for new RSS feed entires.
+        Alter the interval of the background Job checking for RSS feed(s) updates.
 
         Command args (required):
             * Interval: The interval in seconds to run the background Job on.
@@ -189,13 +173,13 @@ class RSS_Feederbot(object):
             interval = int(context.args[0])
             logger.debug(f"Interval: {interval}.")
         except IndexError as err:
-            logger.debug(f"Failed to retrieve interval /changeinterval: {err}.")
+            logger.debug(f"Failed to retrieve interval for /changeinterval: {err}.")
             update.message.reply_text("Provide an interval to /changeinterval.")
             return
         # Remove the previous background Job
         try:
             logger.debug(f"Attempting to remove previous background Job.")
-            for job in context.job_queue.get_jobs_by_name("check_feeds"):
+            for job in context.job_queue.jobs():
                 job.schedule_removal()
             logger.debug("Successfully removed previous background Job.")
         except:  # TODO: Find out what exception occurs here
@@ -208,10 +192,10 @@ class RSS_Feederbot(object):
         logger.debug(
             f"Attemping to create new background Job with a {interval} second interval."
         )
-        context.job_queue.run_repeating(
-            self.check_feeds, interval=interval, name="check_feeds"
+        context.job_queue.run_repeating(self.check_feeds, interval=interval)
+        logger.debug(
+            f"Successfully created new background Job with a {interval} second interval."
         )
-        logger.debug(f"Successfully created new background Job.")
         update.message.reply_text(
             f"Successfully created new background Job with a {interval} second interval."
         )
@@ -225,9 +209,9 @@ class RSS_Feederbot(object):
             logger.debug(
                 f"Background Job: {job.name} next run is on: {job.next_t.strftime('%m/%d/%Y, %H:%M:%S')}"
             )
-        update.message.reply_text(
-            f"Background Job(s) currently running are: {[job.name for job in jobs]}"
-        )
+            update.message.reply_text(
+                f"Background Job: {job.name} next run is on: {job.next_t.strftime('%m/%d/%Y, %H:%M:%S')}"
+            )
 
     def start_bot(self) -> None:
         """
