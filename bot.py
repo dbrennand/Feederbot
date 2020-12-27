@@ -189,9 +189,6 @@ class RSS_Feederbot(object):
             )
             return
         # Create a new background Job using provided interval
-        logger.debug(
-            f"Attemping to create new background Job with a {interval} second interval."
-        )
         context.job_queue.run_repeating(self.check_feeds, interval=interval)
         logger.debug(
             f"Successfully created new background Job with a {interval} second interval."
@@ -207,10 +204,10 @@ class RSS_Feederbot(object):
         jobs = list(context.job_queue.jobs())
         for job in jobs:
             logger.debug(
-                f"Background Job: {job.name} next run is on: {job.next_t.strftime('%m/%d/%Y, %H:%M:%S')}"
+                f"Background Job: {job.name} next run is at: {job.next_t.strftime('%m/%d/%Y, %H:%M:%S')}"
             )
             update.message.reply_text(
-                f"Background Job: {job.name} next run is on: {job.next_t.strftime('%m/%d/%Y, %H:%M:%S')}"
+                f"Background Job: {job.name} next run is at: {job.next_t.strftime('%m/%d/%Y, %H:%M:%S')}"
             )
 
     def start_bot(self) -> None:
