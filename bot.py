@@ -38,7 +38,7 @@ class RSS_Feederbot(object):
         # Use Reader object
         with closing(make_reader("db.sqlite")) as reader:
             reader.update_feeds(workers=10)
-            # Retrieve all RSS feeds
+            # Retrieve all RSS feed(s)
             logger.debug("Retrieving RSS feed(s).")
             feeds = reader.get_feeds(sort="added")
             for feed in feeds:
@@ -47,9 +47,9 @@ class RSS_Feederbot(object):
                 latest_entry = list(reader.get_entries(feed=feed, sort="recent"))[0]
                 # Retrieve last known entry title for feed
                 feed_last_title = self.feeds_last_entry_title.get(feed.title, None)
-                # Compare last update title with latest RSS feed entry's title
+                # Compare last entry title with latest RSS feed entry's title
                 # If different, feed has updated
-                # Update the dictionary and send message of new entry
+                # Update the dictionary and send message a message for the new entry
                 if latest_entry.title != feed_last_title:
                     logger.debug(
                         f"RSS feed: {feed.title} has been updated.\nPrevious entry title was: {feed_last_title} and new entry title is: {latest_entry.title}\nUpdating dictionary with new title and sending update..."
