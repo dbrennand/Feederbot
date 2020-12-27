@@ -47,7 +47,7 @@ class RSS_Feederbot(object):
                 # Retrieve last known entry title for feed
                 feed_last_title = self.feeds_last_entry_title.get(feed.title, None)
                 # Compare last update title with latest RSS feed entry's title
-                # If differ ent, feed has updated
+                # If different, feed has updated
                 # Update the dictionary and send message of new entry
                 if latest_entry.title != feed_last_title:
                     logger.debug(
@@ -90,22 +90,24 @@ class RSS_Feederbot(object):
         # Begin running the background Job immediately
         with closing(make_reader("db.sqlite")) as reader:
             try:
+                logger.debug(f"Attempting to add RSS feed: {feed_url}.")
                 reader.add_feed(feed_url)
-                logger.debug(f"Starting background Job to check RSS feed: {feed_url}.")
-                context.job_queue.run_repeating(
-                    self.check_feeds, interval=interval, first=0.1, name="check_feeds"
-                )
-                # Set user's ID to be used in the background Job
-                self.user_id = update.message.from_user.id
-                logger.debug(f"User's ID: {self.user_id}.")
-                update.message.reply_text(
-                    f"Background Job started to check RSS feed: {feed_url}."
-                )
             except FeedExistsError as err:
                 logger.debug(f"RSS feed already exists: {err}.")
                 update.message.reply_text(
                     f"The RSS feed URL: {feed_url} already exists. You most have already ran /start."
                 )
+                return
+            logger.debug(f"Starting background Job to check RSS feed: {feed_url}.")
+            context.job_queue.run_repeating(
+                self.check_feeds, interval=interval, first=0, name="check_feeds"
+            )
+            # Set user's ID to be used in the background Job
+            self.user_id = update.message.from_user.id
+            logger.debug(f"User's ID: {self.user_id}.")
+            update.message.reply_text(
+                f"Background Job started to check RSS feed: {feed_url}."
+            )
 
     def manage_feed(self, update: Update, context: CallbackContext) -> None:
         """
@@ -209,7 +211,7 @@ class RSS_Feederbot(object):
             f"Attemping to create new background Job with a {interval} second interval."
         )
         context.job_queue.run_repeating(
-            self.check_feeds, interval=interval, first=0.1, name="check_feeds"
+            self.check_feeds, interval=interval, first=0, name="check_feeds"
         )
         logger.debug(f"Successfully created new background Job.")
         update.message.reply_text(
