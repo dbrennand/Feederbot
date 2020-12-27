@@ -2,41 +2,56 @@
 
 A Telegram bot for reading RSS Feeds.
 
-Checks every 30 mins for news based on the user's chosen RSS feeds.
+Checks on an interval for RSS feed updates.
 
-## Dependencies
+## Setup
 
-Install dependencies using [requirements.txt](requirements.txt): `pip install -r requirements.txt`
+### Normal
 
-## Prerequisites
+1. Install dependencies from [requirements.txt](requirements.txt) using: `pip install -r requirements.txt`
 
-1. Insert your user's chat ID found in [bot.py](bot.py):
+2. Set the bot token environment variable:
 
-    - You can find your chat ID using [@userinfobot](https://telegram.me/userinfobot)
+    PowerShell: `$Env:BOT_TOKEN = "Insert bot token here."`
 
-    ```
-    bot.send_message(chat_id="Insert user ID here.", text=rss_msg, parse_mode="Markdown")
-    ```
+    Bash: `export BOT_TOKEN="Insert bot token here."`
 
-2. Provide your bot token to the Updater class object's token parameter found in [bot.py](bot.py):
+3. Run bot.py.
 
-    ```
-    updater = Updater(token="Insert bot token here.", use_context=True)
-    ```
+### Docker
 
-3. Execute bot.py.
+> [!NOTE]
+> Run the following commands from inside the project directory.
 
-### Container
+1. `docker build -t rss_feederbot .`
 
-* Ensure you run these commands from inside this directory.
+2. `docker run --rm --name rss_feederbot -e BOT_TOKEN="Insert bot token here." -d -t rss_feederbot`
 
-* Complete the prerequisites before running these commands.
+## Usage
 
-To run inside a container, run the following commands: 
+Add and remove RSS feeds using the `/managefeed` command:
 
-1. `sudo podman build -t rss_feederbot .`
+* Add: `/managefeed add https://examplefeedurl.com`
 
-2. `sudo podman run --rm -t rss_feederbot`
+* Remove: `/managefeed remove https://examplefeedurl.com`
+
+Begin checking for RSS feed updates using the `/start` command, providing an interval (in seconds) for how often to check for updates:
+
+> [!NOTE]
+> The example below is every 30 minutes (Highly recommended).
+
+`/start 1800`
+
+If you decide that you want to change the interval of how often the bot checks for RSS feed updates, you can use the `/changeinterval` command, providing the new interval (in seconds):
+
+> [!NOTE]
+> The example below is every hour.
+
+`/changeinterval 3600`
+
+To see the RSS feed(s) currently being checked for updates, use the `/showfeed` command.
+
+To see when the bot will next check for RSS feed updates, use the `/showjob` command.
 
 ## Authors -- Contributors
 
