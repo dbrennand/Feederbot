@@ -99,15 +99,13 @@ class RSS_Feederbot(object):
                 )
                 return
             logger.debug(f"Starting background Job to check RSS feed: {feed_url}.")
-            context.job_queue.run_repeating(
-                self.check_feeds, interval=interval, first=0, name="check_feeds"
-            )
             # Set user's ID to be used in the background Job
             self.user_id = update.message.from_user.id
             logger.debug(f"User's ID: {self.user_id}.")
-            update.message.reply_text(
-                f"Background Job started to check RSS feed: {feed_url}."
+            job = context.job_queue.run_repeating(
+                self.check_feeds, interval=interval, name="check_feeds"
             )
+            job.run(context.dispatcher)
 
     def manage_feed(self, update: Update, context: CallbackContext) -> None:
         """
@@ -211,7 +209,7 @@ class RSS_Feederbot(object):
             f"Attemping to create new background Job with a {interval} second interval."
         )
         context.job_queue.run_repeating(
-            self.check_feeds, interval=interval, first=0, name="check_feeds"
+            self.check_feeds, interval=interval, name="check_feeds"
         )
         logger.debug(f"Successfully created new background Job.")
         update.message.reply_text(
@@ -224,9 +222,12 @@ class RSS_Feederbot(object):
         """
         jobs = list(context.job_queue.jobs())
         for job in jobs:
-            logger.debug(f"Background Job: {job.name} next run is on: {job.next_t.strftime('%m/%d/%Y, %H:%M:%S')}")
-        update.message.reply_text(f"Background Job(s) currently running are: {[job.name for job in jobs]}")
-
+            logger.debug(
+                f"Background Job: {job.name} next run is on: {job.next_t.strftime('%m/%d/%Y, %H:%M:%S')}"
+            )
+        update.message.reply_text(
+            f"Background Job(s) currently running are: {[job.name for job in jobs]}"
+        )
 
     def start_bot(self) -> None:
         """
