@@ -12,10 +12,11 @@ class RSS_Feederbot(object):
     """
 
     def __init__(self):
-        # Create log file
+        # Create log file that rotates every 10 days
         logger.add(
             "rss_feederbot_{time}.log",
             format="{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}",
+            retention="10 days"
         )
         # Setup Updater for RSS_Feederbot
         self.updater = Updater(token=os.environ["BOT_TOKEN"], use_context=True)
