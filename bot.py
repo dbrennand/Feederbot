@@ -199,7 +199,7 @@ class RSS_Feederbot(object):
 
     def show_job(self, update: Update, context: CallbackContext) -> None:
         """
-        Utility function to show the currently running background Job(s), if any.
+        Show currently running background Job(s) checking for RSS feed updates, if any.
         """
         jobs = list(context.job_queue.jobs())
         for job in jobs:
@@ -224,7 +224,7 @@ class RSS_Feederbot(object):
             CommandHandler("managefeed", self.manage_feed, pass_args=True)
         )
         dispatcher.add_handler(
-            CommandHandler("showfeed", self.show_feeds, pass_args=True)
+            CommandHandler("showfeed", self.show_feeds)
         )
         dispatcher.add_handler(
             CommandHandler(
