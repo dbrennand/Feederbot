@@ -158,9 +158,9 @@ class RSS_Feederbot(object):
         with closing(make_reader("db.sqlite")) as reader:
             # Obtain RSS feed(s) currently being checked for updates
             feeds = list(reader.get_feeds(sort="added"))
-        update.message.reply_text(
-            f"The following RSS feed(s) are being checked for updates: {[feed.url for feed in feeds]}."
-        )
+        message = f"The following RSS feed(s) are being checked for updates: {[feed.url for feed in feeds]}."
+        logger.debug(message)
+        update.message.reply_text(message)
 
     def change_interval(self, update: Update, context: CallbackContext) -> None:
         """
