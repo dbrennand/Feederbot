@@ -23,9 +23,9 @@ Checks on an interval for RSS feed updates.
 > [!NOTE]
 > Run the following commands from inside the project directory.
 
-1. `docker build -t rss_feederbot .`
+1. `docker build -t rss_feederbot:0.0.4 .`
 
-2. `docker run --rm --name rss_feederbot -e BOT_TOKEN="Insert bot token here." -d -t rss_feederbot`
+2. `docker run --rm --name rss_feederbot -e BOT_TOKEN="Insert bot token here." -d -t rss_feederbot:0.0.4`
 
 ## Usage
 
