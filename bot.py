@@ -62,7 +62,7 @@ async def check_feeds(context: telegram.ext.CallbackContext.DEFAULT_TYPE) -> Non
                     context_logger.info(
                         f"{CHECK_MARK_EMOJI} Unread entries identical to total entries for {feed.title}."
                     )
-                    # This is likely a newly added feed so send the last 5 entries
+                    # This is likely a newly added feed so send the 5 most recent entries
                     await send_feed_entries(context, feed.title, unread_entires[:5])
                 else:
                     context_logger.info(
