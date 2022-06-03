@@ -43,7 +43,7 @@ Feederbot checks on a user configurable interval for feed updates.
 
 ## Authors -- Contributors
 
-**dbrennand** - *Author* - [dbrennand](https://github.com/dbrennand)
+[**dbrennand**](https://github.com/dbrennand) - *Author*
 
 ## License
 
