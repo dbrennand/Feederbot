@@ -3,8 +3,9 @@ FROM python:3.10-slim
 # Set working directory
 WORKDIR /usr/src/app
 
-# Create directory to persist reader database
-RUN mkdir -p /data/reader
+# Create directory and volume to persist the reader database
+RUN mkdir -p /usr/src/app/reader
+VOLUME /usr/src/app/reader
 
 # Copy all of the projects contents to containers /usr/src/app directory
 COPY . .
