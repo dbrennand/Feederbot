@@ -9,7 +9,7 @@ license = "MIT"
 python = "^3.10"
 reader = "^2.12"
 loguru = "^0.6.0"
-python-telegram-bot = {git = "https://github.com/python-telegram-bot/python-telegram-bot.git"}
+python-telegram-bot = {version = "20.0a0", allow-prereleases = true}
 emoji = "^1.7.0"
 
 [tool.poetry.dev-dependencies]
