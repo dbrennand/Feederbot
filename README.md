@@ -10,9 +10,9 @@ Feederbot checks on a user configurable interval for feed updates.
 
 ## Supported Commands
 
-* `/addfeeds <url>` - Add feeds.
+* `/addfeeds <url> ...` - Add feeds.
 
-* `/removefeeds <url>` - Remove feeds.
+* `/removefeeds <url> ...` - Remove feeds.
 
 * `/start <inverval>` - Start reading feeds.
 
