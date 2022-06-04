@@ -1,61 +1,48 @@
-# RSS_Feederbot [Telegram]
+# Feederbot
 
-A Telegram bot for reading RSS Feeds.
+An Atom, RSS, and JSON feed reading Telegram bot 🤖
 
-Checks on an interval for RSS feed updates.
+Feederbot checks on a user configurable interval for feed updates.
+
+## Prerequisites
+
+1. Docker
+
+## Supported Commands
+
+* `/addfeeds <url> ...` - Add feeds.
+
+* `/removefeeds <url> ...` - Remove feeds.
+
+* `/start <inverval>` - Start reading feeds.
+
+* `/changeinterval <interval>` - Change the feed update interval.
+
+* `/showfeeds` - Show feeds.
+
+* `/showjob` - Show the datetime of the next feed update job.
 
 ## Setup
 
-### Normal
+1. Build the container image:
 
-1. Install dependencies from [requirements.txt](requirements.txt) using: `pip install -r requirements.txt`
+    ```bash
+    docker build -t feederbot:1.0.0 .
+    ```
 
-2. Set the bot token environment variable:
+2. Run the container:
 
-    PowerShell: `$Env:BOT_TOKEN = "Insert bot token here."`
-
-    Bash: `export BOT_TOKEN="Insert bot token here."`
-
-3. Run bot.py.
-
-### Docker
-
-> [!NOTE]
-> Run the following commands from inside the project directory.
-
-1. `docker build -t rss_feederbot:0.0.4 .`
-
-2. `docker run --rm --name rss_feederbot -e BOT_TOKEN="Insert bot token here." -d -t rss_feederbot:0.0.4`
-
-## Usage
-
-Add and remove RSS feeds using the `/managefeed` command:
-
-* Add: `/managefeed add https://examplefeedurl.com`
-
-* Remove: `/managefeed remove https://examplefeedurl.com`
-
-Begin checking for RSS feed updates using the `/start` command, providing an interval (in seconds) for how often to check for updates:
-
-> [!NOTE]
-> The example below is every 30 minutes (Highly recommended).
-
-`/start 1800`
-
-If you decide that you want to change the interval of how often the bot checks for RSS feed updates, you can use the `/changeinterval` command, providing the new interval (in seconds):
-
-> [!NOTE]
-> The example below is every hour.
-
-`/changeinterval 3600`
-
-To see the RSS feed(s) currently being checked for updates, use the `/showfeed` command.
-
-To see when the bot will next check for RSS feed updates, use the `/showjob` command.
+    ```bash
+    # Using the Docker volume for the reader database
+    docker run -d -t -e BOT_TOKEN="<Bot Token>" -e USER_ID="<User ID>" --name feederbot feederbot:1.0.0
+    # Using a bind mount for the reader database
+    docker run -d -t -e BOT_TOKEN="<Bot Token>" -e USER_ID="<User ID>" -v /path/to/store/db:/usr/src/app/reader --name feederbot feederbot:1.0.0
+    ```
 
 ## Authors -- Contributors
 
-* **dbrennand** - *Author* - [dbrennand](https://github.com/dbrennand)
+[**dbrennand**](https://github.com/dbrennand) - *Author*
 
 ## License
+
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) for details.
