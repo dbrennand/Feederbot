@@ -1,12 +1,12 @@
 from typing import List
 from loguru import logger
 import reader as r
+import contextlib
 import os
 import sys
 import emoji
 import telegram
 import telegram.ext
-import contextlib
 
 READER_DB_PATH = "/usr/src/app/reader/db.sqlite"
 BOT_TOKEN = os.environ["BOT_TOKEN"]
@@ -98,13 +98,13 @@ async def send_feed_entries(
         f"{CHECK_MARK_EMOJI} Sending {len(entries)} entries for {feed_title}."
     )
     fmt_entries = [(entry.title, entry.link) for entry in entries]
-    message = "**{0}**\n\n{1}".format(
+    msg = "{0}\n\n{1}".format(
         feed_title, "\n".join(f"[{title}]({link})" for title, link in fmt_entries)
-    ).replace("-", "\\")
+    )
     await context.bot.send_message(
         chat_id=USER_ID,
-        text=message,
-        parse_mode=telegram.constants.ParseMode.MARKDOWN_V2,
+        text=msg,
+        parse_mode="Markdown",
     )
 
 
@@ -200,14 +200,14 @@ async def change_interval(
 async def show_feeds(
     update: telegram.Update, context: telegram.ext.CallbackContext.DEFAULT_TYPE
 ) -> None:
-    """Show all feeds.
+    """Show feeds.
 
     Args:
         update (telegram.Update): Object representing the incoming update from Telegram.
         context (telegram.ext.CallbackContext.DEFAULT_TYPE): Object representing the callback context.
     """
     context_logger = logger.bind(function="show_feeds")
-    context_logger.info(f"{CHECK_MARK_EMOJI} Showing all feeds.")
+    context_logger.info(f"{CHECK_MARK_EMOJI} Showing feeds.")
     with contextlib.closing(r.make_reader(READER_DB_PATH)) as reader:
         feeds = list(reader.get_feeds(sort="added"))
         feed_count = len(list(feeds))
