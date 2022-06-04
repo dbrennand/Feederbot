@@ -210,7 +210,7 @@ async def show_feeds(
     context_logger.info(f"{CHECK_MARK_EMOJI} Showing feeds.")
     with contextlib.closing(r.make_reader(READER_DB_PATH)) as reader:
         feeds = list(reader.get_feeds(sort="added"))
-        feed_count = len(list(feeds))
+        feed_count = len(feeds)
         context_logger.info(f"{CHECK_MARK_EMOJI} Found {feed_count} feeds.")
         context_logger.info(
             f"{CHECK_MARK_EMOJI} {feed_count} feeds: {[feed.url for feed in feeds]}."
