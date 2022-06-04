@@ -8,8 +8,6 @@ Feederbot checks on a user configurable interval for feed updates.
 
 1. Docker
 
-2. Docker Compose
-
 ## Supported Commands
 
 * `/addfeeds <url>` - Add feeds.
