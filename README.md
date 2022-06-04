@@ -20,7 +20,7 @@ Feederbot checks on a user configurable interval for feed updates.
 
 * `/changeinterval <interval>` - Change the feed update interval.
 
-* `/showfeeds` - Show all feeds.
+* `/showfeeds` - Show feeds.
 
 * `/showjob` - Show the datetime of the next feed update job.
 
