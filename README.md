@@ -14,7 +14,7 @@ Feederbot checks on a user configurable interval for feed updates.
 
 * `/removefeeds <url> ...` - Remove feeds.
 
-* `/start <inverval>` - Start reading feeds.
+* `/start <interval>` - Start reading feeds.
 
 * `/changeinterval <interval>` - Change the feed update interval.
 
