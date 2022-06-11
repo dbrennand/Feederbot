@@ -6,7 +6,9 @@ Feederbot checks on a user configurable interval for feed updates.
 
 ## Prerequisites
 
-1. Docker
+1. A Telegram bot token from [@BotFather](https://t.me/botfather)
+
+2. Docker
 
 ## Supported Commands
 
