@@ -8,7 +8,9 @@ Feederbot checks on a user configurable interval for feed updates.
 
 1. A Telegram bot token from [@BotFather](https://t.me/botfather)
 
-2. Docker
+2. Your Telegram user ID from [@userinfobot](https://t.me/userinfobot)
+
+3. Docker
 
 ## Supported Commands
 
