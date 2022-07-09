@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Feederbot"
-version = "1.0.0"
+version = "1.0.1"
 description = "An RSS feed reading Telegram bot"
 authors = ["dbrennand <52419383+dbrennand@users.noreply.github.com>"]
 license = "MIT"
