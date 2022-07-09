@@ -31,16 +31,22 @@ Feederbot checks on a user configurable interval for feed updates.
 1. Build the container image:
 
     ```bash
-    docker build -t feederbot:1.0.0 .
+    # Using docker-compose
+    docker-compose build
+    # Using docker build
+    docker build -t feederbot:1.0.1 .
     ```
 
 2. Run the container:
 
     ```bash
+    # Using docker-compose
+    # Supply the BOT_TOKEN and USER_ID environment variables in docker-compose.yml
+    docker-compose up -d
     # Using the Docker volume for the reader database
-    docker run -d -t -e BOT_TOKEN="<Bot Token>" -e USER_ID="<User ID>" --name feederbot feederbot:1.0.0
+    docker run -d -t -e BOT_TOKEN="<Bot Token>" -e USER_ID="<User ID>" --name feederbot feederbot:1.0.1
     # Using a bind mount for the reader database
-    docker run -d -t -e BOT_TOKEN="<Bot Token>" -e USER_ID="<User ID>" -v /path/to/store/db:/usr/src/app/reader --name feederbot feederbot:1.0.0
+    docker run -d -t -e BOT_TOKEN="<Bot Token>" -e USER_ID="<User ID>" -v /path/to/store/db:/usr/src/app/reader --name feederbot feederbot:1.0.1
     ```
 
 ## Authors -- Contributors

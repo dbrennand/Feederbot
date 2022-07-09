@@ -39,6 +39,25 @@ async def check_feeds(context: telegram.ext.CallbackContext.DEFAULT_TYPE) -> Non
     Args:
         context (telegram.ext.CallbackContext.DEFAULT_TYPE): Object representing the callback context.
     """
+
+    async def mark_entries_as_read(
+        reader: r.Reader, feed_title: str, entries: List[r.Entry]
+    ) -> None:
+        """Mark entries as read.
+
+        Args:
+            reader (r.Reader): A Reader object to interact with the Reader database.
+            feed_title (str): The title of the feed.
+            entries (List[r.Entry]): Feed entries to mark as read.
+        """
+        context_logger = logger.bind(function="check_feeds/mark_entries_as_read")
+        # Mark entries as read
+        for entry in entries:
+            reader.mark_entry_as_read(entry)
+        context_logger.info(
+            f"{CHECK_MARK_EMOJI} {len(entries)} entries marked as read for {feed_title}."
+        )
+
     context_logger = logger.bind(function="check_feeds")
     context_logger.info(f"{CHECK_MARK_EMOJI} Checking for feed updates.")
     with contextlib.closing(r.make_reader(READER_DB_PATH)) as reader:
@@ -46,35 +65,30 @@ async def check_feeds(context: telegram.ext.CallbackContext.DEFAULT_TYPE) -> Non
         context_logger.info(f"{CHECK_MARK_EMOJI} Feeds updated.")
         for feed in reader.get_feeds(sort="added"):
             context_logger.info(f"{CHECK_MARK_EMOJI} Checking {feed.title}.")
-            # Get all feed entries
-            entries = list(reader.get_entries(feed=feed, sort="recent"))
-            # Get unread feed entries
-            unread_entires = list(
+            # Get all unread feed entries
+            unread_entries = list(
                 reader.get_entries(feed=feed, sort="recent", read=False)
             )
-            entries_count = len(entries)
-            unread_entires_count = len(unread_entires)
-            if unread_entires:
+            # Get feed entry counts
+            feed_entry_counts = reader.get_entry_counts(feed=feed)
+            # Calculate feed unread entry count
+            unread_entries_count = feed_entry_counts.total - feed_entry_counts.read
+            if unread_entries_count:
                 # If this is a newly added feed, all of the entries will be unread
                 # so we need to check if the unread feed entry count is identical to the
                 # total feed entry count
-                if unread_entires_count == entries_count:
+                if unread_entries_count == feed_entry_counts.total:
                     context_logger.info(
                         f"{CHECK_MARK_EMOJI} Unread entries identical to total entries for {feed.title}."
                     )
                     # This is likely a newly added feed so send the 5 most recent entries
-                    await send_feed_entries(context, feed.title, unread_entires[:5])
+                    await send_feed_entries(context, feed.title, unread_entries[:5])
                 else:
                     context_logger.info(
-                        f"{CHECK_MARK_EMOJI} {unread_entires_count} new entries for {feed.title}."
+                        f"{CHECK_MARK_EMOJI} {unread_entries_count} new entries for {feed.title}."
                     )
-                    await send_feed_entries(context, feed.title, unread_entires)
-                # Mark entries as read
-                for entry in unread_entires:
-                    reader.mark_entry_as_read(entry)
-                context_logger.info(
-                    f"{CHECK_MARK_EMOJI} {unread_entires_count} entries marked as read for {feed.title}."
-                )
+                    await send_feed_entries(context, feed.title, unread_entries)
+                await mark_entries_as_read(reader, feed.title, unread_entries)
             else:
                 context_logger.info(
                     f"{CHECK_MARK_EMOJI} No new entries for {feed.title}."
@@ -91,7 +105,7 @@ async def send_feed_entries(
     Args:
         context (telegram.ext.CallbackContext.DEFAULT_TYPE): Object representing the callback context.
         feed_title (str): The title of the feed.
-        entries (Iterable[r.Entry]): Feed entries to send.
+        entries (List[r.Entry]): Feed entries to send.
     """
     context_logger = logger.bind(function="send_feed_entries")
     context_logger.info(

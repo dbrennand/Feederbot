@@ -1,0 +1,11 @@
+version: "3.9"
+services:
+  feederbot:
+    build:
+      context: .
+    image: feederbot:1.0.1
+    container_name: feederbot
+    environment:
+      - BOT_TOKEN=
+      - USER_ID=
+    restart: unless-stopped
