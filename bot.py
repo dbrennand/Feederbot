@@ -1,7 +1,6 @@
 from typing import List
 from loguru import logger
 import reader as r
-import contextlib
 import os
 import sys
 import emoji
@@ -9,6 +8,7 @@ import telegram
 import telegram.ext
 
 READER_DB_PATH = "/usr/src/app/reader/db.sqlite"
+READER = r.make_reader(READER_DB_PATH)
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 USER_ID = os.environ["USER_ID"]
 CHECK_MARK_EMOJI = emoji.emojize(":check_mark_button:", language="alias")
@@ -40,37 +40,36 @@ async def check_feeds(context: telegram.ext.CallbackContext.DEFAULT_TYPE) -> Non
         context (telegram.ext.CallbackContext.DEFAULT_TYPE): Object representing the callback context.
     """
 
-    async def mark_entries_as_read(
-        reader: r.Reader, feed_title: str, entries: List[r.Entry]
+    async def mark_entries_as_read(feed_title: str, entries: List[r.Entry]
     ) -> None:
         """Mark entries as read.
 
         Args:
-            reader (r.Reader): A Reader object to interact with the Reader database.
             feed_title (str): The title of the feed.
             entries (List[r.Entry]): Feed entries to mark as read.
         """
         context_logger = logger.bind(function="check_feeds/mark_entries_as_read")
         # Mark entries as read
-        for entry in entries:
-            reader.mark_entry_as_read(entry)
+        with READER:
+            for entry in entries:
+                READER.mark_entry_as_read(entry)
         context_logger.info(
             f"{CHECK_MARK_EMOJI} {len(entries)} entries marked as read for {feed_title}."
         )
 
     context_logger = logger.bind(function="check_feeds")
     context_logger.info(f"{CHECK_MARK_EMOJI} Checking for feed updates.")
-    with contextlib.closing(r.make_reader(READER_DB_PATH)) as reader:
-        reader.update_feeds(workers=10)
+    with READER:
+        READER.update_feeds(workers=10)
         context_logger.info(f"{CHECK_MARK_EMOJI} Feeds updated.")
-        for feed in reader.get_feeds(sort="added"):
+        for feed in READER.get_feeds(sort="added"):
             context_logger.info(f"{CHECK_MARK_EMOJI} Checking {feed.title}.")
             # Get all unread feed entries
             unread_entries = list(
-                reader.get_entries(feed=feed, sort="recent", read=False)
+                READER.get_entries(feed=feed, sort="recent", read=False)
             )
             # Get feed entry counts
-            feed_entry_counts = reader.get_entry_counts(feed=feed)
+            feed_entry_counts = READER.get_entry_counts(feed=feed)
             # Calculate feed unread entry count
             unread_entries_count = feed_entry_counts.total - feed_entry_counts.read
             if unread_entries_count:
@@ -88,7 +87,7 @@ async def check_feeds(context: telegram.ext.CallbackContext.DEFAULT_TYPE) -> Non
                         f"{CHECK_MARK_EMOJI} {unread_entries_count} new entries for {feed.title}."
                     )
                     await send_feed_entries(context, feed.title, unread_entries)
-                await mark_entries_as_read(reader, feed.title, unread_entries)
+                await mark_entries_as_read(feed.title, unread_entries)
             else:
                 context_logger.info(
                     f"{CHECK_MARK_EMOJI} No new entries for {feed.title}."
@@ -137,10 +136,10 @@ async def add_feeds(
     context_logger = logger.bind(function="add_feed")
     feeds = context.args
     context_logger.info(f"{CHECK_MARK_EMOJI} Adding {len(feeds)} feeds.")
-    with contextlib.closing(r.make_reader(READER_DB_PATH)) as reader:
+    with READER:
         for feed in feeds:
             try:
-                reader.add_feed(feed)
+                READER.add_feed(feed)
                 context_logger.info(f"{CHECK_MARK_EMOJI} Added {feed}.")
                 await update.message.reply_text(f"{CHECK_MARK_EMOJI} Added {feed}.")
             except r.FeedExistsError:
@@ -165,10 +164,10 @@ async def remove_feeds(
     context_logger = logger.bind(function="remove_feed")
     feeds = context.args
     context_logger.info(f"{CHECK_MARK_EMOJI} Removing {len(feeds)} feeds.")
-    with contextlib.closing(r.make_reader(READER_DB_PATH)) as reader:
+    with READER:
         for feed in feeds:
             try:
-                reader.delete_feed(feed)
+                READER.delete_feed(feed)
                 context_logger.info(f"{CHECK_MARK_EMOJI} Removed {feed}.")
                 await update.message.reply_text(f"{CHECK_MARK_EMOJI} Removed {feed}.")
             except r.FeedNotFoundError:
@@ -222,8 +221,8 @@ async def show_feeds(
     """
     context_logger = logger.bind(function="show_feeds")
     context_logger.info(f"{CHECK_MARK_EMOJI} Showing feeds.")
-    with contextlib.closing(r.make_reader(READER_DB_PATH)) as reader:
-        feeds = list(reader.get_feeds(sort="added"))
+    with READER:
+        feeds = list(READER.get_feeds(sort="added"))
         feed_count = len(feeds)
         context_logger.info(f"{CHECK_MARK_EMOJI} Found {feed_count} feeds.")
         context_logger.info(
