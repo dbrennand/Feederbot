@@ -105,7 +105,7 @@ async def send_feed_entries(
     Args:
         context (telegram.ext.CallbackContext.DEFAULT_TYPE): Object representing the callback context.
         feed_title (str): The title of the feed.
-        entries (Iterable[r.Entry]): Feed entries to send.
+        entries (List[r.Entry]): Feed entries to send.
     """
     context_logger = logger.bind(function="send_feed_entries")
     context_logger.info(
