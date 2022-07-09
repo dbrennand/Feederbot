@@ -39,6 +39,25 @@ async def check_feeds(context: telegram.ext.CallbackContext.DEFAULT_TYPE) -> Non
     Args:
         context (telegram.ext.CallbackContext.DEFAULT_TYPE): Object representing the callback context.
     """
+
+    async def mark_entries_as_read(
+        reader: r.Reader, feed_title: str, entries: List[r.Entry]
+    ) -> None:
+        """Mark entries as read.
+
+        Args:
+            reader (r.Reader): A Reader object to interact with the Reader database.
+            feed_title (str): The title of the feed.
+            entries (List[r.Entry]): Feed entries to mark as read.
+        """
+        context_logger = logger.bind(function="check_feeds/mark_entries_as_read")
+        # Mark entries as read
+        for entry in entries:
+            reader.mark_entry_as_read(entry)
+        context_logger.info(
+            f"{CHECK_MARK_EMOJI} {len(entries)} entries marked as read for {feed_title}."
+        )
+
     context_logger = logger.bind(function="check_feeds")
     context_logger.info(f"{CHECK_MARK_EMOJI} Checking for feed updates.")
     with contextlib.closing(r.make_reader(READER_DB_PATH)) as reader:
@@ -46,39 +65,34 @@ async def check_feeds(context: telegram.ext.CallbackContext.DEFAULT_TYPE) -> Non
         context_logger.info(f"{CHECK_MARK_EMOJI} Feeds updated.")
         for feed in reader.get_feeds(sort="added"):
             context_logger.info(f"{CHECK_MARK_EMOJI} Checking {feed.title}.")
-            # Get all feed entries
-            entries = list(reader.get_entries(feed=feed, sort="recent"))
-            # Get unread feed entries
-            unread_entires = list(
-                reader.get_entries(feed=feed, sort="recent", read=False)
-            )
-            entries_count = len(entries)
-            unread_entires_count = len(unread_entires)
-            if unread_entires:
-                # If this is a newly added feed, all of the entries will be unread
-                # so we need to check if the unread feed entry count is identical to the
-                # total feed entry count
-                if unread_entires_count == entries_count:
+            # Check if the feed has updated before, if it has not then it's likely a newly added feed
+            if feed.last_updated is None:
+                context_logger.info(
+                    f"{CHECK_MARK_EMOJI} No last updated property for {feed.title}."
+                )
+                # Get the 5 most recent entries
+                unread_entries = list(
+                    reader.get_entries(feed=feed, sort="recent", limit=5)
+                )
+                await send_feed_entries(context, feed.title, unread_entries)
+                await mark_entries_as_read(reader, feed.title, unread_entries)
+            else:
+                # Feed has updated before, check if there are any new entries
+                entry_counts = reader.get_entry_counts(feed=feed)
+                unread_entry_count = entry_counts.total - entry_counts.read
+                if unread_entry_count:
                     context_logger.info(
-                        f"{CHECK_MARK_EMOJI} Unread entries identical to total entries for {feed.title}."
+                        f"{CHECK_MARK_EMOJI} {unread_entry_count} new entries for {feed.title}."
                     )
-                    # This is likely a newly added feed so send the 5 most recent entries
-                    await send_feed_entries(context, feed.title, unread_entires[:5])
+                    unread_entries = list(
+                        reader.get_entries(feed=feed, sort="recent", read=False)
+                    )
+                    await send_feed_entries(context, feed.title, unread_entries)
+                    await mark_entries_as_read(reader, feed.title, unread_entries)
                 else:
                     context_logger.info(
-                        f"{CHECK_MARK_EMOJI} {unread_entires_count} new entries for {feed.title}."
+                        f"{CHECK_MARK_EMOJI} No new entries for {feed.title}."
                     )
-                    await send_feed_entries(context, feed.title, unread_entires)
-                # Mark entries as read
-                for entry in unread_entires:
-                    reader.mark_entry_as_read(entry)
-                context_logger.info(
-                    f"{CHECK_MARK_EMOJI} {unread_entires_count} entries marked as read for {feed.title}."
-                )
-            else:
-                context_logger.info(
-                    f"{CHECK_MARK_EMOJI} No new entries for {feed.title}."
-                )
 
 
 async def send_feed_entries(
