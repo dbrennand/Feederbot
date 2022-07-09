@@ -61,20 +61,21 @@ async def check_feeds(context: telegram.ext.CallbackContext.DEFAULT_TYPE) -> Non
     context_logger = logger.bind(function="check_feeds")
     context_logger.info(f"{CHECK_MARK_EMOJI} Checking for feed updates.")
     with contextlib.closing(r.make_reader(READER_DB_PATH)) as reader:
-        reader.update_feeds(workers=10)
-        context_logger.info(f"{CHECK_MARK_EMOJI} Feeds updated.")
         for feed in reader.get_feeds(sort="added"):
+            # Get the feed last updated property before we update
+            feed_last_updated = feed.last_updated
+            reader.update_feeds(feed=feed, workers=10)
+            context_logger.info(f"{CHECK_MARK_EMOJI} Updated {feed.title}.")
             context_logger.info(f"{CHECK_MARK_EMOJI} Checking {feed.title}.")
             # Check if the feed has updated before, if it has not then it's likely a newly added feed
-            if feed.last_updated is None:
+            if feed_last_updated is None:
                 context_logger.info(
                     f"{CHECK_MARK_EMOJI} No last updated property for {feed.title}."
                 )
-                # Get the 5 most recent entries
-                unread_entries = list(
-                    reader.get_entries(feed=feed, sort="recent", limit=5)
-                )
-                await send_feed_entries(context, feed.title, unread_entries)
+                # Get all entries to mark as read
+                unread_entries = list(reader.get_entries(feed=feed, sort="recent"))
+                # Send the 5 most recent entries
+                await send_feed_entries(context, feed.title, unread_entries[:5])
                 await mark_entries_as_read(reader, feed.title, unread_entries)
             else:
                 # Feed has updated before, check if there are any new entries
