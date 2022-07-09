@@ -40,8 +40,7 @@ async def check_feeds(context: telegram.ext.CallbackContext.DEFAULT_TYPE) -> Non
         context (telegram.ext.CallbackContext.DEFAULT_TYPE): Object representing the callback context.
     """
 
-    async def mark_entries_as_read(feed_title: str, entries: List[r.Entry]
-    ) -> None:
+    async def mark_entries_as_read(feed_title: str, entries: List[r.Entry]) -> None:
         """Mark entries as read.
 
         Args:
