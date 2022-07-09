@@ -41,6 +41,7 @@ Feederbot checks on a user configurable interval for feed updates.
 
     ```bash
     # Using docker-compose
+    # Supply the BOT_TOKEN and USER_ID environment variables in docker-compose.yml
     docker-compose up -d
     # Using the Docker volume for the reader database
     docker run -d -t -e BOT_TOKEN="<Bot Token>" -e USER_ID="<User ID>" --name feederbot feederbot:1.0.1
